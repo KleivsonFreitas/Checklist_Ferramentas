@@ -359,12 +359,19 @@ function loginEmailFromMatricula(matricula){
   return matricula.trim().toLowerCase() + '@login.ferramental-energisa.app';
 }
 
+// Enquanto um login/cadastro está em andamento pelas funções abaixo,
+// o listener global de autenticação (onAuthStateChanged) fica em
+// espera: ele pode disparar antes de terminarmos de salvar o perfil
+// no Firestore, e não deve "atropelar" o fluxo manual com um erro.
+let manualAuthInProgress = false;
+
 async function loadAll(){
   state.tools = await DB.getTools();
   state.history = await DB.getHistory();
   state.users = await DB.getUsers();
 
   auth.onAuthStateChanged(async (fbUser) => {
+    if(manualAuthInProgress) return; // doLogin/bootstrapAdmin cuidam do estado sozinhos
     if(fbUser){
       const profile = state.users.find(u => u.uid === fbUser.uid);
       if(profile){
@@ -395,14 +402,21 @@ async function bootstrapAdmin(nome, matricula, cpf, email, senha, confirmar){
     state.authMsg={type:'error', text:'Preencha todos os campos. CPF deve ter 11 dígitos.'}; render(); return;
   }
   if(senha !== confirmar){ state.authMsg={type:'error', text:'As senhas não coincidem.'}; render(); return; }
+  manualAuthInProgress = true;
   try{
     const cred = await auth.createUserWithEmailAndPassword(loginEmailFromMatricula(matricula), senha);
     const profile = { uid: cred.user.uid, nome, matricula, cpf, email, role:'admin' };
     state.users.push(profile);
     await saveUsers();
-    // onAuthStateChanged cuida de logar o usuário automaticamente.
+    // Assumimos o login diretamente aqui, sem depender do listener global
+    // (evita a corrida em que ele dispara antes do perfil ser salvo).
+    state.currentUser = profile;
+    state.authMsg = null;
+    state.tab = 'dashboard';
   }catch(e){
     state.authMsg = {type:'error', text:'Não foi possível criar o acesso: ' + (e.message||e)};
+  }finally{
+    manualAuthInProgress = false;
     render();
   }
 }
@@ -410,13 +424,22 @@ async function bootstrapAdmin(nome, matricula, cpf, email, senha, confirmar){
 // ---------- AUTH ----------
 async function doLogin(matricula, senha){
   matricula = matricula.trim();
+  manualAuthInProgress = true;
   try{
-    await auth.signInWithEmailAndPassword(loginEmailFromMatricula(matricula), senha);
+    const cred = await auth.signInWithEmailAndPassword(loginEmailFromMatricula(matricula), senha);
+    const profile = state.users.find(u => u.uid === cred.user.uid);
+    if(!profile){
+      state.authMsg = {type:'error', text:'Login válido, mas sem perfil cadastrado. Fale com o administrador.'};
+      await auth.signOut();
+      return;
+    }
+    state.currentUser = profile;
     state.authMsg = null;
     state.tab = 'dashboard';
-    // onAuthStateChanged atualiza state.currentUser e re-renderiza.
   }catch(e){
     state.authMsg = {type:'error', text:'Matrícula ou senha incorretos.'};
+  }finally{
+    manualAuthInProgress = false;
     render();
   }
 }
