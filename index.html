@@ -1,0 +1,973 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+<title>Controle de Ferramental — Energisa</title>
+<style>
+  :root{
+    --blue:#1490c4;
+    --blue-dark:#0e6d9c;
+    --blue-darker:#0a5580;
+    --sidebar:#12588c;
+    --sidebar-active:#1a76b5;
+    --orange:#ee6a2f;
+    --paper:#eef2f6;
+    --card:#ffffff;
+    --ink:#1c2b3a;
+    --ink-soft:#5b6b7c;
+    --danger:#d64545;
+    --danger-bg:#fdeaea;
+    --ok:#2f8f4e;
+    --ok-bg:#eaf7ee;
+    --amber:#c98a12;
+    --amber-bg:#fdf3e3;
+    --line:#e2e8ee;
+    --radius:14px;
+    font-family:'Segoe UI', system-ui, -apple-system, sans-serif;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; background:var(--paper); color:var(--ink); min-height:100vh; -webkit-font-smoothing:antialiased;}
+  button{font-family:inherit;}
+
+  .auth-wrap{min-height:100vh; display:flex; align-items:center; justify-content:center; padding:24px;}
+  .auth-card{width:100%; max-width:400px; background:var(--card); border-radius:18px; box-shadow:0 10px 40px rgba(20,60,90,.12); overflow:hidden;}
+  .auth-topbar{height:6px; background:linear-gradient(90deg,var(--orange),#f3944f);}
+  .auth-body{padding:34px 30px 30px;}
+  .auth-icon{width:72px; height:72px; border-radius:50%; background:var(--blue); display:flex; align-items:center; justify-content:center; margin:0 auto 18px;}
+  .auth-title{text-align:center; color:var(--blue-dark); font-size:20px; font-weight:800; margin:0 0 24px;}
+  .auth-label{display:block; font-size:13px; font-weight:700; color:var(--ink); margin-bottom:6px;}
+  .auth-input{width:100%; padding:12px 14px; border:1.5px solid var(--line); border-radius:10px; font-size:14.5px; background:#fbfcfd; color:var(--ink); margin-bottom:16px;}
+  .auth-input:focus{outline:2px solid var(--blue); border-color:var(--blue);}
+  .auth-btn{width:100%; padding:13px; background:var(--blue); color:#fff; border:none; border-radius:10px; font-size:15px; font-weight:800; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px;}
+  .auth-btn:active{background:var(--blue-dark);}
+  .auth-btn.secondary{background:#65707c;}
+  .auth-link{display:block; text-align:center; margin-top:16px; color:var(--blue-dark); font-size:13.5px; font-weight:700; text-decoration:none; cursor:pointer; background:none; border:none;}
+  .auth-row{display:flex; gap:10px;}
+  .auth-row > *{flex:1;}
+  .auth-msg{text-align:center; font-size:12.5px; padding:9px 12px; border-radius:8px; margin-bottom:16px; font-weight:600;}
+  .auth-msg.error{background:var(--danger-bg); color:var(--danger);}
+  .auth-msg.ok{background:var(--ok-bg); color:var(--ok);}
+  .auth-desc{text-align:center; font-size:13px; color:var(--ink-soft); margin:-14px 0 22px;}
+  .auth-hint{text-align:center; font-size:11.5px; color:#8fa0b0; margin-top:18px; line-height:1.5;}
+
+  .shell{display:flex; min-height:100vh;}
+  .sidebar{width:230px; flex-shrink:0; background:linear-gradient(180deg,var(--sidebar),var(--blue-darker)); color:#fff; padding:22px 14px; display:flex; flex-direction:column;}
+  .sidebar-logo{font-size:21px; font-weight:900; letter-spacing:.02em; margin-bottom:2px;}
+  .sidebar-sub{font-size:11.5px; color:#bfe0f2; margin-bottom:28px;}
+  .sidebar-nav{display:flex; flex-direction:column; gap:3px; flex:1;}
+  .sidebar-nav button{display:flex; align-items:center; gap:10px; text-align:left; padding:11px 12px; border:none; border-radius:9px; background:transparent; color:#d7e8f4; font-size:13.5px; font-weight:600; cursor:pointer;}
+  .sidebar-nav button .ic{font-size:15px; width:18px; text-align:center;}
+  .sidebar-nav button.active{background:var(--sidebar-active); color:#fff; font-weight:800;}
+  .sidebar-nav button:hover:not(.active){background:rgba(255,255,255,.08);}
+  .sidebar-foot{padding-top:14px; border-top:1px solid rgba(255,255,255,.15); font-size:11px; color:#a9cbe0;}
+  .role-tag{display:inline-block; margin-top:8px; padding:3px 9px; background:rgba(255,255,255,.15); border-radius:20px; font-size:10.5px; font-weight:800; text-transform:uppercase;}
+
+  .main{flex:1; min-width:0; display:flex; flex-direction:column;}
+  .topheader{background:#fff; border-bottom:1px solid var(--line); padding:18px 26px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:14px;}
+  .topheader h1{margin:0; font-size:22px; font-weight:900; color:var(--ink);}
+  .topheader .desc{font-size:12.5px; color:var(--ink-soft); margin-top:2px;}
+  .user-box{display:flex; align-items:center; gap:12px;}
+  .user-box .name{text-align:right;}
+  .user-box .name .n{font-size:13px; font-weight:800; color:var(--ink);}
+  .user-box .name .r{font-size:11px; color:var(--ink-soft);}
+  .logout-btn{width:36px; height:36px; border-radius:9px; border:1.5px solid var(--line); background:#fff; cursor:pointer; font-size:16px; color:var(--ink-soft); display:flex; align-items:center; justify-content:center;}
+  .logout-btn:hover{background:var(--danger-bg); color:var(--danger); border-color:#f3c6c6;}
+
+  .content{padding:22px 26px 50px; flex:1;}
+  .quickrow{display:flex; gap:10px; flex-wrap:wrap; margin-bottom:20px;}
+  .quickbtn{padding:11px 18px; border-radius:10px; border:none; background:var(--blue); color:#fff; font-weight:800; font-size:13px; cursor:pointer; display:flex; align-items:center; gap:7px;}
+  .quickbtn.alt{background:var(--sidebar);}
+
+  .cards-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:14px; margin-bottom:22px;}
+  .stat-card{background:var(--card); border-radius:12px; padding:16px 18px; border-left:4px solid var(--blue); box-shadow:0 1px 3px rgba(20,40,60,.05);}
+  .stat-card.orange{border-left-color:var(--orange);}
+  .stat-card.red{border-left-color:var(--danger);}
+  .stat-card.green{border-left-color:var(--ok);}
+  .stat-top{display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;}
+  .stat-top .label{font-size:13px; font-weight:700; color:var(--ink); display:flex; align-items:center; gap:6px;}
+  .stat-badge{font-size:10px; font-weight:800; padding:3px 9px; border-radius:20px; text-transform:uppercase;}
+  .stat-badge.blue{background:#e3f2fa; color:var(--blue-dark);}
+  .stat-badge.orange{background:var(--amber-bg); color:var(--amber);}
+  .stat-badge.red{background:var(--danger-bg); color:var(--danger);}
+  .stat-badge.green{background:var(--ok-bg); color:var(--ok);}
+  .stat-num{font-size:30px; font-weight:900; color:var(--ink); margin-bottom:2px;}
+  .stat-desc{font-size:12px; color:var(--ink-soft);}
+
+  .card{background:var(--card); border:1px solid var(--line); border-radius:var(--radius); padding:18px; margin-bottom:16px;}
+  .card h2{margin:0 0 4px; font-size:15.5px; font-weight:800; color:var(--ink);}
+  .card p.hint{margin:0 0 14px; font-size:12.5px; color:var(--ink-soft);}
+  label{display:block; font-size:12px; font-weight:700; color:var(--ink-soft); margin-bottom:5px; text-transform:uppercase; letter-spacing:.03em;}
+  input[type=text], input[type=number], input[type=date], input[type=password], select{
+    width:100%; padding:11px 12px; border:1.5px solid var(--line); border-radius:10px; font-size:14.5px; background:#fbfcfd; color:var(--ink); margin-bottom:12px;
+  }
+  input:focus, select:focus{outline:2px solid var(--blue); border-color:var(--blue);}
+  .row{display:flex; gap:10px;}
+  .row > *{flex:1;}
+  button.primary{width:100%; padding:13px; background:var(--sidebar); color:#fff; border:none; border-radius:10px; font-size:14.5px; font-weight:800; cursor:pointer;}
+  button.primary.blue{background:var(--blue);}
+  button.ghost{width:100%; padding:11px; background:transparent; color:var(--blue-dark); border:1.5px solid var(--blue-dark); border-radius:10px; font-weight:700; font-size:13.5px; cursor:pointer;}
+  button.danger-link{background:none; border:none; color:var(--danger); font-size:12.5px; font-weight:700; cursor:pointer; padding:4px 0;}
+
+  .tool-item{display:flex; align-items:center; gap:10px; padding:10px 0; border-bottom:1px solid var(--line);}
+  .tool-item:last-child{border-bottom:none;}
+  .tool-item .name{flex:1; font-size:14.5px; font-weight:600;}
+  .tool-item .qty{font-size:12.5px; color:var(--ink-soft);}
+  .empty{text-align:center; padding:26px 10px; color:var(--ink-soft); font-size:13.5px;}
+
+  .check-row{padding:12px 0; border-bottom:1px solid var(--line);}
+  .check-row:last-child{border-bottom:none;}
+  .check-row .tname{margin-bottom:9px;}
+  .check-row .tname .n{font-weight:700; font-size:14.5px;}
+  .check-row .tname .e{font-size:12px; color:var(--ink-soft);}
+  .status-group{display:flex; gap:8px;}
+  .status-btn{
+    flex:1; padding:9px 6px; border-radius:9px; border:1.5px solid var(--line); background:#fff;
+    color:var(--ink-soft); font-size:12.5px; font-weight:800; cursor:pointer; text-align:center;
+  }
+  .status-btn.sel-ok{background:var(--ok-bg); border-color:var(--ok); color:var(--ok);}
+  .status-btn.sel-falta{background:var(--danger-bg); border-color:var(--danger); color:var(--danger);}
+  .status-btn.sel-substituir{background:var(--amber-bg); border-color:var(--amber); color:var(--amber);}
+
+  .badge{display:inline-block; padding:3px 9px; border-radius:20px; font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.03em;}
+  .badge.ok{background:var(--ok-bg); color:var(--ok);}
+  .badge.bad{background:var(--danger-bg); color:var(--danger);}
+  .badge.amber{background:var(--amber-bg); color:var(--amber);}
+  .badge.wait{background:#eef0e6; color:var(--ink-soft);}
+
+  .summary-box{border-radius:12px; padding:14px; margin-bottom:12px;}
+  .summary-box.ok{background:var(--ok-bg); border:1.5px solid #bfe3c9;}
+  .summary-box.bad{background:var(--danger-bg); border:1.5px solid #f3c6c6;}
+  .summary-box .title{font-weight:800; font-size:14.5px; margin-bottom:2px;}
+  .summary-box .title.ok{color:var(--ok);}
+  .summary-box .title.bad{color:var(--danger);}
+  .summary-box .desc{font-size:12.5px; color:var(--ink-soft);}
+
+  .hist-item{padding:13px 0; border-bottom:1px solid var(--line);}
+  .hist-item:last-child{border-bottom:none;}
+  .hist-top{display:flex; justify-content:space-between; align-items:baseline; margin-bottom:4px;}
+  .hist-top .via{font-weight:800; font-size:14.5px;}
+  .hist-top .date{font-size:11.5px; color:var(--ink-soft);}
+  .hist-meta{font-size:12px; color:var(--ink-soft); margin-bottom:6px;}
+  .hist-photo{width:100%; max-height:420px; object-fit:contain; background:#eef1f4; border-radius:10px; margin:8px 0; border:1px solid var(--line);}
+
+  .photo-input-wrap{border:1.5px dashed var(--line); border-radius:10px; padding:14px; text-align:center; margin-bottom:12px; background:#fbfcfd;}
+  .photo-input-wrap input[type=file]{width:100%; font-size:13px;}
+  .photo-preview{width:100%; max-height:420px; object-fit:contain; background:#eef1f4; border-radius:10px; margin-top:10px;}
+  .photo-btn{display:block; text-align:center; padding:11px; background:transparent; color:var(--blue-dark); border:1.5px solid var(--blue-dark); border-radius:10px; font-weight:700; font-size:13.5px; cursor:pointer; box-sizing:border-box;}
+  a.photo-download{display:block; text-align:center; padding:11px; background:transparent; color:var(--blue-dark); border:1.5px solid var(--blue-dark); border-radius:10px; font-weight:700; font-size:13.5px; text-decoration:none; box-sizing:border-box;}
+
+  .stage-label{display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;}
+  .stage-label .name{font-weight:800; font-size:14px;}
+  .shared-tag{display:inline-flex; align-items:center; gap:5px; margin-bottom:16px; padding:5px 11px; background:#e3f2fa; border:1px solid #bfe0f2; border-radius:20px; font-size:11.5px; font-weight:700; color:var(--blue-dark);}
+
+  .user-list-item{display:flex; align-items:center; gap:10px; padding:11px 0; border-bottom:1px solid var(--line);}
+  .user-list-item:last-child{border-bottom:none;}
+  .user-list-item .u-name{flex:1;}
+  .user-list-item .u-name .n{font-weight:700; font-size:14px;}
+  .user-list-item .u-name .m{font-size:12px; color:var(--ink-soft);}
+
+  .hamburger-btn{display:none;}
+  .sidebar-overlay{display:none;}
+
+  @media (max-width:720px){
+    .hamburger-btn{
+      display:flex; align-items:center; justify-content:center;
+      width:38px; height:38px; border-radius:9px; border:1.5px solid var(--line);
+      background:#fff; font-size:18px; color:var(--ink); cursor:pointer; flex-shrink:0;
+    }
+    .sidebar{
+      position:fixed; left:0; top:0; bottom:0; z-index:30; width:230px;
+      transform:translateX(-100%); transition:transform .25s ease;
+      box-shadow:6px 0 24px rgba(10,30,50,.25);
+    }
+    .sidebar.open{transform:translateX(0);}
+    .sidebar-overlay{
+      display:none; position:fixed; inset:0; background:rgba(10,25,40,.45); z-index:25;
+    }
+    .sidebar-overlay.show{display:block;}
+
+    .content{padding:16px 14px 40px;}
+    .topheader{padding:14px 16px; gap:10px;}
+    .topheader h1{font-size:18px;}
+    .user-box{gap:8px;}
+    .user-box .name .r{display:none;}
+
+    .quickrow{flex-direction:column;}
+    .quickbtn{width:100%; justify-content:center;}
+
+    .row{flex-wrap:wrap;}
+    .row > *{flex:1 1 100%;}
+
+    .status-group{flex-wrap:wrap;}
+    .status-btn{flex:1 1 28%; padding:9px 4px;}
+
+    .hist-top{flex-wrap:wrap; row-gap:3px;}
+
+    .auth-body{padding:26px 20px 24px;}
+    .auth-wrap{padding:16px;}
+
+    .cards-grid{grid-template-columns:1fr;}
+  }
+
+  @media (max-width:380px){
+    .status-btn{flex:1 1 100%;}
+  }
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<!-- Firebase SDK (compat) — autenticação e banco de dados reais -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+
+<script>
+/* =====================================================================
+   FICHA TÉCNICA — CONTROLE DE FERRAMENTAL (protótipo para integração)
+   =====================================================================
+   OBJETIVO
+   Registrar, por viatura e por dia, a contagem do kit de ferramentas,
+   comparar com o kit padrão cadastrado e guardar o histórico (com foto
+   opcional) para consulta e exportação em CSV.
+
+   PERFIS
+   - Administrador: cadastra usuários, cadastra o kit padrão de
+     ferramentas, edita e exclui registros do histórico.
+   - Vistoriador: faz login, inicia vistorias e consulta o histórico.
+     Não edita nem exclui registros.
+
+   TELAS
+   Login / Recuperar senha  →  Dashboard  →  Nova Vistoria (contagem →
+   resultado)  →  Histórico (com exportação CSV)  →  [admin] Ferramentas
+   →  [admin] Vistoriadores.
+
+   REGRA DE NEGÓCIO CHAVE
+   Uma vistoria por viatura, por dia (ver startSession).
+
+   MODELO DE DADOS (hoje serializado em JSON dentro de cada chave)
+   usuario:     { id, nome, matricula, cpf, senhaHash, role }
+   ferramenta:  { id, name, qty }
+   vistoria:    { id, viatura, date, matricula1, matricula2, photo,
+                  registradoEm, registradoPor, tools:[{name,status}],
+                  ok, editadoEm?, editadoPor? }
+   status possíveis por ferramenta: 'ok' | 'falta' | 'substituir'
+
+   BACKEND REAL — FIREBASE (Authentication + Firestore)
+   1) Login/senha agora são validados pelo Firebase Authentication.
+      Nenhuma senha ou hash de senha fica no código-fonte ou no
+      Firestore. Quem confere a senha é o próprio Firebase.
+   2) Como o Firebase Auth exige um "e-mail" como identificador, cada
+      vistoriador cadastra um e-mail real (usado só para login e
+      recuperação de senha) e continua enxergando/usando a matrícula
+      no dia a dia do app.
+   3) Os dados de negócio (ferramentas, histórico de vistorias e o
+      perfil de cada usuário — nome/matrícula/cpf/role) ficam no
+      Firestore, protegidos por regras de segurança que exigem estar
+      autenticado (ver texto de regras que enviei na conversa).
+   4) Fotos continuam em base64 dentro do próprio registro. Para um
+      volume grande de fotos, o ideal futuro é usar o Firebase Storage
+      e guardar só a URL no Firestore — não implementado aqui ainda.
+   5) IMPORTANTE — limitação conhecida: o SDK do Firebase usado no
+      navegador (client-side) não permite que o admin exclua a conta
+      de autenticação de outro usuário nem redefina a senha de outra
+      pessoa diretamente. "Remover vistoriador" aqui remove o PERFIL
+      no Firestore (a pessoa não consegue mais entrar no app, pois cai
+      no aviso de "perfil não encontrado"), mas a conta de login em si
+      só é totalmente excluída com Cloud Functions (Admin SDK) — uma
+      etapa futura, fora do escopo de um site 100% estático.
+   ===================================================================== */
+
+// Configuração do projeto Firebase (gerada no Console do Firebase)
+const firebaseConfig = {
+  apiKey: "AIzaSyDJ9z1_-XQ4OwBBGxM0jgG02h611u88-4Y",
+  authDomain: "checklist-ferramentas.firebaseapp.com",
+  projectId: "checklist-ferramentas",
+  storageBucket: "checklist-ferramentas.firebasestorage.app",
+  messagingSenderId: "896476660593",
+  appId: "1:896476660593:web:793e94696001c5bbe92cd0",
+  measurementId: "G-SL52Z28PED"
+};
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const fireDb = firebase.firestore();
+
+// Documentos únicos no Firestore que guardam cada lista (mesmo formato
+// de dados de antes, só que persistidos de verdade em nuvem).
+const DOC_USERS = fireDb.collection('app-data').doc('usuarios');
+const DOC_TOOLS = fireDb.collection('app-data').doc('ferramentas');
+const DOC_HISTORY = fireDb.collection('app-data').doc('historico');
+
+const STATUS_LABEL = { ok:'OK', falta:'Falta', substituir:'Precisa substituir' };
+
+let state = {
+  loading: true,
+  users: [],
+  currentUser: null,
+  screen: 'login',        // login | recuperar | vistoriadores
+  recoverStep: 'find',
+  recoverUser: null,
+  authMsg: null,
+  tab: 'dashboard',
+  tools: [],
+  history: [],
+  session: null,
+  userFormMsg: null,
+  sidebarOpen: false
+};
+
+function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+function todayISO(){ return new Date().toISOString().slice(0,10); }
+function fmtDateBR(iso){ const [y,m,d]=iso.split('-'); return `${d}/${m}/${y}`; }
+function fmtDateTimeBR(iso){ const d=new Date(iso); return d.toLocaleDateString('pt-BR')+' '+d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}); }
+function escapeHtml(str){ const div=document.createElement('div'); div.textContent=str; return div.innerHTML; }
+function onlyDigits(s){ return (s||'').replace(/\D/g,''); }
+function isAdmin(){ return state.currentUser && state.currentUser.role === 'admin'; }
+
+// =====================================================================
+// CAMADA DE DADOS (DB) — agora fala com o Firestore de verdade.
+// =====================================================================
+const DB = {
+  async getUsers(){
+    try{ const snap = await DOC_USERS.get(); return snap.exists ? (snap.data().list || []) : []; }
+    catch(e){ console.error(e); return []; }
+  },
+  async saveUsers(list){
+    try{ await DOC_USERS.set({ list }); }catch(e){ console.error(e); }
+  },
+  async getTools(){
+    try{ const snap = await DOC_TOOLS.get(); return snap.exists ? (snap.data().list || []) : []; }
+    catch(e){ console.error(e); return []; }
+  },
+  async saveTools(list){
+    try{ await DOC_TOOLS.set({ list }); }catch(e){ console.error(e); }
+  },
+  async getHistory(){
+    try{ const snap = await DOC_HISTORY.get(); return snap.exists ? (snap.data().list || []) : []; }
+    catch(e){ console.error(e); return []; }
+  },
+  async saveHistory(list){
+    try{ await DOC_HISTORY.set({ list }); }catch(e){ console.error(e); }
+  }
+};
+
+// Matrícula não é um e-mail, mas o Firebase Auth exige um formato de
+// e-mail para o login técnico. Guardamos o e-mail REAL do vistoriador
+// (para recuperação de senha) separado do "e-mail técnico" de login.
+function loginEmailFromMatricula(matricula){
+  return matricula.trim().toLowerCase() + '@login.ferramental-energisa.app';
+}
+
+async function loadAll(){
+  state.tools = await DB.getTools();
+  state.history = await DB.getHistory();
+  state.users = await DB.getUsers();
+
+  auth.onAuthStateChanged(async (fbUser) => {
+    if(fbUser){
+      const profile = state.users.find(u => u.uid === fbUser.uid);
+      if(profile){
+        state.currentUser = profile;
+        state.screen = 'login';
+      } else {
+        // Conta existe no Firebase Auth mas o perfil foi removido do
+        // Firestore (ex.: admin "removeu" este vistoriador).
+        state.currentUser = null;
+        state.authMsg = {type:'error', text:'Seu acesso foi removido. Fale com o administrador.'};
+        await auth.signOut();
+      }
+    } else {
+      state.currentUser = null;
+    }
+    state.loading = false;
+    render();
+  });
+}
+async function saveUsers(){ await DB.saveUsers(state.users); }
+async function saveTools(){ await DB.saveTools(state.tools); }
+async function saveHistory(){ await DB.saveHistory(state.history); }
+
+// ---------- PRIMEIRO ACESSO (cria o administrador inicial) ----------
+async function bootstrapAdmin(nome, matricula, cpf, email, senha, confirmar){
+  nome=nome.trim(); matricula=matricula.trim(); cpf=onlyDigits(cpf); email=email.trim();
+  if(!nome || !matricula || cpf.length!==11 || !email || !senha){
+    state.authMsg={type:'error', text:'Preencha todos os campos. CPF deve ter 11 dígitos.'}; render(); return;
+  }
+  if(senha !== confirmar){ state.authMsg={type:'error', text:'As senhas não coincidem.'}; render(); return; }
+  try{
+    const cred = await auth.createUserWithEmailAndPassword(loginEmailFromMatricula(matricula), senha);
+    const profile = { uid: cred.user.uid, nome, matricula, cpf, email, role:'admin' };
+    state.users.push(profile);
+    await saveUsers();
+    // onAuthStateChanged cuida de logar o usuário automaticamente.
+  }catch(e){
+    state.authMsg = {type:'error', text:'Não foi possível criar o acesso: ' + (e.message||e)};
+    render();
+  }
+}
+
+// ---------- AUTH ----------
+async function doLogin(matricula, senha){
+  matricula = matricula.trim();
+  try{
+    await auth.signInWithEmailAndPassword(loginEmailFromMatricula(matricula), senha);
+    state.authMsg = null;
+    state.tab = 'dashboard';
+    // onAuthStateChanged atualiza state.currentUser e re-renderiza.
+  }catch(e){
+    state.authMsg = {type:'error', text:'Matrícula ou senha incorretos.'};
+    render();
+  }
+}
+async function logout(){
+  await auth.signOut();
+  state.screen = 'login'; state.authMsg = null; state.tab = 'dashboard'; state.sidebarOpen = false;
+  render();
+}
+function toggleSidebar(){ state.sidebarOpen = !state.sidebarOpen; render(); }
+function closeSidebar(){ state.sidebarOpen = false; render(); }
+function goScreen(screen){
+  state.authMsg = null; state.screen = screen; state.recoverStep = 'find'; state.recoverUser = null;
+  render();
+}
+// Recuperação de senha real: envia e-mail do próprio Firebase para o
+// endereço de e-mail cadastrado (não o e-mail técnico de login).
+async function findRecoverUser(matricula){
+  matricula = matricula.trim();
+  const user = state.users.find(u => u.matricula === matricula);
+  if(!user || !user.email){ state.authMsg = {type:'error', text:'Matrícula não encontrada ou sem e-mail cadastrado.'}; render(); return; }
+  try{
+    await auth.sendPasswordResetEmail(loginEmailFromMatricula(matricula));
+    state.authMsg = {type:'ok', text:'Enviamos um link de redefinição de senha para o e-mail cadastrado: ' + user.email};
+    render();
+  }catch(e){
+    state.authMsg = {type:'error', text:'Não foi possível enviar o e-mail de recuperação agora.'};
+    render();
+  }
+}
+
+// ---------- ADMIN: gerenciar vistoriadores ----------
+// Usa uma instância secundária do Firebase para criar o novo login sem
+// derrubar a sessão do administrador que está cadastrando.
+async function addVistoriador(nome, matricula, cpf, email, senha, role){
+  nome = nome.trim(); matricula = matricula.trim(); cpf = onlyDigits(cpf); email = email.trim();
+  if(!nome || !matricula || cpf.length !== 11 || !email || !senha){
+    state.userFormMsg = {type:'error', text:'Preencha todos os campos. CPF deve ter 11 dígitos.'}; render(); return;
+  }
+  if(state.users.some(u => u.matricula === matricula)){
+    state.userFormMsg = {type:'error', text:'Já existe cadastro com essa matrícula.'}; render(); return;
+  }
+  const secondaryApp = firebase.initializeApp(firebaseConfig, 'secundario-' + Date.now());
+  try{
+    const cred = await secondaryApp.auth().createUserWithEmailAndPassword(loginEmailFromMatricula(matricula), senha);
+    state.users.push({ uid: cred.user.uid, nome, matricula, cpf, email, role: role === 'admin' ? 'admin' : 'vistoriador' });
+    await saveUsers();
+    await secondaryApp.auth().signOut();
+    state.userFormMsg = {type:'ok', text:'Vistoriador cadastrado com sucesso.'};
+  }catch(e){
+    state.userFormMsg = {type:'error', text:'Não foi possível cadastrar: ' + (e.message||e)};
+  }finally{
+    await secondaryApp.delete();
+    render();
+  }
+}
+function removeVistoriador(uidToRemove){
+  if(uidToRemove === state.currentUser.uid){ alert('Você não pode remover seu próprio usuário.'); return; }
+  if(!confirm('Remover este colaborador do sistema? A conta de login dele será desativada (o perfil some, mas a exclusão completa da conta exige um passo adicional pelo administrador do Firebase).')) return;
+  state.users = state.users.filter(u => u.uid !== uidToRemove);
+  saveUsers(); render();
+}
+
+// ---------- FERRAMENTAS (só admin) ----------
+function addTool(name, qty){
+  name = name.trim(); if(!name) return;
+  state.tools.push({ id: uid(), name, qty: Math.max(1, qty||1) });
+  saveTools(); render();
+}
+function removeTool(id){ state.tools = state.tools.filter(t=>t.id!==id); saveTools(); render(); }
+
+// ---------- VISTORIA ----------
+function startSession(viatura, date, m1, m2, m3){
+  if(!viatura.trim() || !date || !m1.trim() || !m2.trim()) return;
+  const already = state.history.some(h => h.viatura.toLowerCase() === viatura.trim().toLowerCase() && h.date === date);
+  if(already){ alert('Já existe uma vistoria registrada para a viatura ' + viatura.trim() + ' na data ' + fmtDateBR(date) + '.'); return; }
+  const status = {};
+  state.tools.forEach(t => status[t.id] = 'ok');
+  state.session = { viatura: viatura.trim(), date, matricula1: m1.trim(), matricula2: m2.trim(), matricula3: (m3||'').trim(), photo: null, status, stage:'contagem' };
+  render();
+}
+function setStatus(toolId, value){
+  state.session.status[toolId] = value;
+  render();
+}
+function resizeImage(file, maxW){
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const scale = Math.min(1, maxW / img.width);
+        const w = img.width*scale, h = img.height*scale;
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img,0,0,w,h);
+        resolve(canvas.toDataURL('image/jpeg',0.82));
+      };
+      img.onerror = reject;
+      img.src = e.target.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+async function handlePhotoInput(file){
+  if(!file) return;
+  try{ state.session.photo = await resizeImage(file, 1600); render(); }catch(e){ console.error(e); }
+}
+function removePhoto(){ state.session.photo = null; render(); }
+function goToResultado(){
+  if(!state.session.photo){ alert('É obrigatório anexar a foto completa das ferramentas antes de finalizar.'); return; }
+  state.session.stage = 'resultado'; render();
+}
+function finalizeSession(){
+  const discrepancies = state.tools.filter(t => state.session.status[t.id] !== 'ok');
+  const toolsResult = state.tools.map(t => ({ name:t.name, status: state.session.status[t.id] || 'ok' }));
+  if(state.session.editingId){
+    const idx = state.history.findIndex(h => h.id === state.session.editingId);
+    if(idx !== -1 && isAdmin()){
+      state.history[idx] = {
+        ...state.history[idx],
+        viatura: state.session.viatura, date: state.session.date,
+        matricula1: state.session.matricula1, matricula2: state.session.matricula2, matricula3: state.session.matricula3 || '',
+        photo: state.session.photo,
+        tools: toolsResult, ok: discrepancies.length === 0,
+        editadoEm: new Date().toISOString(),
+        editadoPor: state.currentUser ? state.currentUser.nome : ''
+      };
+    }
+  } else {
+    state.history.unshift({
+      id: uid(), viatura: state.session.viatura, date: state.session.date,
+      matricula1: state.session.matricula1, matricula2: state.session.matricula2, matricula3: state.session.matricula3 || '',
+      photo: state.session.photo, registradoEm: new Date().toISOString(),
+      registradoPor: state.currentUser ? state.currentUser.nome : '',
+      tools: toolsResult,
+      ok: discrepancies.length === 0
+    });
+  }
+  saveHistory();
+  state.session = null;
+  state.tab = 'history';
+  render();
+}
+function cancelSession(){ state.session = null; render(); }
+function deleteHistoryItem(id){
+  if(!isAdmin()) return;
+  if(!confirm('Tem certeza de que deseja excluir este registro? Essa ação não pode ser desfeita e afeta todos os vistoriadores.')) return;
+  state.history = state.history.filter(h => h.id !== id);
+  saveHistory(); render();
+}
+function startEditSession(historyId){
+  if(!isAdmin()) return; // vistoriador nunca pode editar registros — só o administrador
+  const h = state.history.find(x => x.id === historyId);
+  if(!h) return;
+  const status = {};
+  state.tools.forEach(t => {
+    const match = h.tools.find(rt => rt.name === t.name);
+    status[t.id] = match ? (match.status || 'ok') : 'ok';
+  });
+  state.session = {
+    editingId: h.id, viatura: h.viatura, date: h.date,
+    matricula1: h.matricula1, matricula2: h.matricula2, matricula3: h.matricula3 || '',
+    photo: h.photo || null, status, stage: 'contagem'
+  };
+  render();
+}
+function csvEscape(val){ const s=String(val??''); if(/[";\n]/.test(s)) return '"'+s.replace(/"/g,'""')+'"'; return s; }
+function exportCSV(onlyDiv){
+  const list = onlyDiv ? state.history.filter(h=>!h.ok) : state.history;
+  if(list.length===0){ alert(onlyDiv?'Nenhuma divergência registrada.':'Nenhuma vistoria registrada.'); return; }
+  const header = ['Viatura','Data','Matricula1','Matricula2','Matricula3','Registrado por','Registrado em','Resultado','Ferramenta','Status','Divergente'];
+  const rows = [header];
+  list.forEach(h => h.tools.forEach(t => {
+    rows.push([h.viatura, fmtDateBR(h.date), h.matricula1, h.matricula2, h.matricula3||'', h.registradoPor||'', fmtDateTimeBR(h.registradoEm),
+      h.ok?'Kit completo':'Divergencia', t.name, STATUS_LABEL[t.status]||t.status, t.status!=='ok'?'Sim':'Nao']);
+  }));
+  const csv = '\uFEFF' + rows.map(r=>r.map(csvEscape).join(';')).join('\r\n');
+  const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = (onlyDiv?'divergencias_':'vistorias_') + new Date().toISOString().slice(0,10) + '.csv';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+}
+
+// ---------- RENDER ----------
+function render(){
+  const app = document.getElementById('app');
+  if(state.loading){ app.innerHTML = `<div style="padding:60px 20px; text-align:center; color:#5b6b7c;">Carregando...</div>`; return; }
+  app.innerHTML = state.currentUser ? renderShell() : renderAuth();
+  attachHandlers();
+}
+
+function renderAuth(){
+  if(state.users.length === 0) return renderBootstrapScreen();
+  if(state.screen === 'recuperar') return renderRecuperarScreen();
+  return renderLoginScreen();
+}
+
+function renderBootstrapScreen(){
+  const msg = state.authMsg ? `<div class="auth-msg ${state.authMsg.type}">${escapeHtml(state.authMsg.text)}</div>` : '';
+  return `
+  <div class="auth-wrap"><div class="auth-card"><div class="auth-topbar"></div><div class="auth-body">
+    <div class="auth-icon">${personLockIcon()}</div>
+    <h1 class="auth-title">Primeiro acesso</h1>
+    <div class="auth-desc">Ainda não há administrador cadastrado. Crie o primeiro acesso do sistema.</div>
+    ${msg}
+    <label class="auth-label">Nome completo:</label><input type="text" class="auth-input" id="bs-nome" placeholder="Nome completo">
+    <label class="auth-label">Matrícula:</label><input type="text" class="auth-input" id="bs-matricula" placeholder="Ex: 20001">
+    <label class="auth-label">CPF:</label><input type="text" class="auth-input" id="bs-cpf" placeholder="Somente números">
+    <label class="auth-label">E-mail (para recuperação de senha):</label><input type="text" class="auth-input" id="bs-email" placeholder="seuemail@empresa.com">
+    <label class="auth-label">Senha:</label><input type="password" class="auth-input" id="bs-senha" placeholder="Crie uma senha">
+    <label class="auth-label">Confirmar senha:</label><input type="password" class="auth-input" id="bs-confirmar" placeholder="Repita a senha">
+    <button class="auth-btn" id="bootstrap-btn">Criar administrador</button>
+  </div></div></div>`;
+}
+
+function personLockIcon(){
+  return `<svg width="34" height="34" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="9" cy="7" r="3.2" stroke="white" stroke-width="1.6"/>
+    <path d="M3.5 19c0-3 2.5-5.2 5.5-5.2 1.2 0 2.3.35 3.2.95" stroke="white" stroke-width="1.6" stroke-linecap="round"/>
+    <rect x="14.5" y="12.5" width="7" height="6" rx="1.3" stroke="white" stroke-width="1.6"/>
+    <path d="M16 12.5v-1.7a2 2 0 0 1 4 0v1.7" stroke="white" stroke-width="1.6"/>
+  </svg>`;
+}
+
+function renderLoginScreen(){
+  const msg = state.authMsg ? `<div class="auth-msg ${state.authMsg.type}">${escapeHtml(state.authMsg.text)}</div>` : '';
+  return `
+  <div class="auth-wrap">
+    <div class="auth-card">
+      <div class="auth-topbar"></div>
+      <div class="auth-body">
+        <div class="auth-icon">${personLockIcon()}</div>
+        <h1 class="auth-title">Login do Controle de Ferramental</h1>
+        ${msg}
+        <label class="auth-label">Matrícula:</label>
+        <input type="text" class="auth-input" id="login-matricula" placeholder="Digite sua matrícula">
+        <label class="auth-label">Senha:</label>
+        <input type="password" class="auth-input" id="login-senha" placeholder="Digite sua senha">
+        <button class="auth-btn" id="login-btn">Entrar →</button>
+        <button class="auth-link" id="goto-recuperar">Esqueci minha senha</button>
+        <div class="auth-hint">Novo colaborador? Peça ao administrador para criar seu acesso.</div>
+      </div>
+    </div>
+  </div>`;
+}
+
+function renderRecuperarScreen(){
+  const msg = state.authMsg ? `<div class="auth-msg ${state.authMsg.type}">${escapeHtml(state.authMsg.text)}</div>` : '';
+  return `
+  <div class="auth-wrap"><div class="auth-card"><div class="auth-topbar"></div><div class="auth-body">
+    <h1 class="auth-title">Recuperar acesso</h1>
+    <div class="auth-desc">Informe sua matrícula. Enviaremos um link de redefinição de senha para o e-mail cadastrado.</div>
+    ${msg}
+    <label class="auth-label">Matrícula:</label><input type="text" class="auth-input" id="rec-matricula" placeholder="Digite sua matrícula">
+    <div class="auth-row"><button class="auth-btn secondary" id="back-login-2">Cancelar</button><button class="auth-btn" id="find-recover-btn">Enviar link</button></div>
+  </div></div></div>`;
+}
+
+// ---------- SHELL ----------
+function renderShell(){
+  const navItems = [
+    {id:'dashboard', ic:'▦', label:'Dashboard'},
+    {id:'checklist', ic:'📋', label:'Nova Vistoria'},
+    {id:'history', ic:'🕘', label:'Histórico'}
+  ];
+  if(isAdmin()){
+    navItems.push({id:'tools', ic:'🧰', label:'Ferramentas'});
+    navItems.push({id:'vistoriadores', ic:'👥', label:'Vistoriadores'});
+  }
+  const titles = {
+    dashboard: ['Dashboard', 'Visão Geral do Controle de Ferramental'],
+    checklist: ['Nova Vistoria', 'Contagem de Ferramentas por Viatura'],
+    tools: ['Ferramentas', 'Kit Padrão — Cadastro Exclusivo do Administrador'],
+    vistoriadores: ['Vistoriadores', 'Cadastro de Colaboradores — Exclusivo do Administrador'],
+    history: ['Histórico', 'Vistorias Registradas por Todos os Vistoriadores']
+  };
+  const [title, desc] = state.session
+    ? (state.session.editingId ? ['Editar vistoria', 'Atualize a Contagem e Salve as Alterações'] : ['Vistoria em Andamento', 'Preencha a Contagem para Concluir'])
+    : titles[state.tab];
+
+  let body = '';
+  if(state.session) body = renderSession();
+  else if(state.tab === 'dashboard') body = renderDashboard();
+  else if(state.tab === 'checklist') body = renderChecklistTab();
+  else if(state.tab === 'tools' && isAdmin()) body = renderToolsTab();
+  else if(state.tab === 'vistoriadores' && isAdmin()) body = renderVistoriadoresTab();
+  else if(state.tab === 'history') body = renderHistoryTab();
+  else body = renderDashboard();
+
+  return `
+  <div class="shell">
+    <div class="sidebar-overlay ${state.sidebarOpen?'show':''}" id="sidebar-overlay"></div>
+    <aside class="sidebar ${state.sidebarOpen?'open':''}">
+      <div class="sidebar-logo">ENERGISA</div>
+      <div class="sidebar-sub">Controle de Ferramental</div>
+      <nav class="sidebar-nav">
+        ${navItems.map(n => `<button class="${!state.session && state.tab===n.id?'active':''}" data-tab="${n.id}"><span class="ic">${n.ic}</span>${n.label}</button>`).join('')}
+      </nav>
+      <div class="sidebar-foot">
+        🔗 Dados compartilhados
+        <div class="role-tag">${isAdmin()?'Administrador':'Vistoriador'}</div>
+      </div>
+    </aside>
+    <div class="main">
+      <header class="topheader">
+        <div style="display:flex; align-items:center; gap:12px;">
+          <button class="hamburger-btn" id="hamburger-btn" title="Menu" aria-label="Abrir menu">☰</button>
+          <div><h1>${title}</h1><div class="desc">${desc}</div></div>
+        </div>
+        <div class="user-box">
+          <div class="name"><div class="n">${escapeHtml(state.currentUser.nome)}</div><div class="r">Matrícula ${escapeHtml(state.currentUser.matricula)}</div></div>
+          <button class="logout-btn" id="logout-btn" title="Sair">⏻</button>
+        </div>
+      </header>
+      <div class="content">${body}</div>
+    </div>
+  </div>`;
+}
+
+function renderDashboard(){
+  const total = state.tools.length;
+  const totalVist = state.history.length;
+  const divergentes = state.history.filter(h=>!h.ok).length;
+  const hoje = state.history.filter(h=>h.date===todayISO()).length;
+  return `
+    <div class="quickrow">
+      <button class="quickbtn" data-tab="checklist">📋 Nova Vistoria</button>
+      ${isAdmin() ? `<button class="quickbtn alt" data-tab="tools">🧰 Ferramentas</button><button class="quickbtn alt" data-tab="vistoriadores">👥 Vistoriadores</button>` : ''}
+      <button class="quickbtn alt" data-tab="history">🕘 Histórico</button>
+    </div>
+    <div class="cards-grid">
+      <div class="stat-card"><div class="stat-top"><span class="label">🧰 Ferramentas</span><span class="stat-badge blue">Kit</span></div><div class="stat-num">${total}</div><div class="stat-desc">Total de ferramentas cadastradas</div></div>
+      <div class="stat-card orange"><div class="stat-top"><span class="label">📋 Vistorias</span><span class="stat-badge orange">Operação</span></div><div class="stat-num">${totalVist}</div><div class="stat-desc">Total de vistorias registradas</div></div>
+      <div class="stat-card red"><div class="stat-top"><span class="label">⚠️ Divergências</span><span class="stat-badge red">Atenção</span></div><div class="stat-num">${divergentes}</div><div class="stat-desc">Vistorias com ferramenta faltando ou a substituir</div></div>
+      <div class="stat-card green"><div class="stat-top"><span class="label">📅 Hoje</span><span class="stat-badge green">${fmtDateBR(todayISO())}</span></div><div class="stat-num">${hoje}</div><div class="stat-desc">Vistorias feitas hoje</div></div>
+    </div>`;
+}
+
+function renderChecklistTab(){
+  if(state.tools.length === 0){
+    return `<div class="card"><h2>Nenhuma Ferramenta Cadastrada</h2><p class="hint">Peça ao Administrador para cadastrar o kit de ferramentas antes de iniciar uma vistoria.</p></div>`;
+  }
+  return `
+    <div class="card">
+      <h2>Iniciar nova vistoria</h2>
+      <p class="hint">Só é permitida uma vistoria por viatura, por dia.</p>
+      <label for="viatura-input">Nº da viatura</label>
+      <input type="text" id="viatura-input" placeholder="Ex: VTR-1042">
+      <label for="date-input">Data da vistoria</label>
+      <input type="date" id="date-input" value="${todayISO()}">
+      <div class="row">
+        <div><label for="m1-input">Matrícula colaborador 1</label><input type="text" id="m1-input" placeholder="Ex: 20456"></div>
+        <div><label for="m2-input">Matrícula colaborador 2</label><input type="text" id="m2-input" placeholder="Ex: 20789"></div>
+        <div><label for="m3-input">Matrícula colaborador 3 (opcional)</label><input type="text" id="m3-input" placeholder="Ex: 20999"></div>
+      </div>
+      <button class="primary blue" id="start-btn">Iniciar contagem (${state.tools.length} itens)</button>
+    </div>`;
+}
+
+function renderToolsTab(){
+  const items = state.tools.map(t => `
+    <div class="tool-item"><div class="name">${escapeHtml(t.name)}</div><div class="qty">qtd. padrão: ${t.qty}</div><button class="danger-link" data-remove-tool="${t.id}">Remover</button></div>`).join('');
+  return `
+    <div class="card">
+      <h2>Adicionar ferramenta</h2><p class="hint">Somente o administrador cadastra o kit padrão.</p>
+      <label for="tool-name">Nome da ferramenta</label><input type="text" id="tool-name" placeholder="Ex: Alicate universal">
+      <label for="tool-qty">Quantidade padrão no kit</label><input type="number" id="tool-qty" min="1" value="1">
+      <button class="primary blue" id="add-tool-btn">Adicionar à lista</button>
+    </div>
+    <div class="card"><h2>Kit atual (${state.tools.length})</h2>${state.tools.length?items:'<div class="empty">Nenhuma ferramenta cadastrada ainda.</div>'}</div>`;
+}
+
+function renderVistoriadoresTab(){
+  const msg = state.userFormMsg ? `<div class="auth-msg ${state.userFormMsg.type}" style="text-align:left;">${escapeHtml(state.userFormMsg.text)}</div>` : '';
+  const items = state.users.map(u => `
+    <div class="user-list-item">
+      <div class="u-name"><div class="n">${escapeHtml(u.nome)} ${u.role==='admin'?'<span class="badge blue" style="background:#e3f2fa;color:#0e6d9c;">Admin</span>':''}</div><div class="m">Matrícula ${escapeHtml(u.matricula)}</div></div>
+      ${u.uid !== state.currentUser.uid ? `<button class="danger-link" data-remove-user="${u.uid}">Remover</button>` : '<span style="font-size:11.5px; color:#8fa0b0;">Você</span>'}
+    </div>`).join('');
+  return `
+    <div class="card">
+      <h2>Cadastrar vistoriador</h2><p class="hint">Somente o administrador cria novos acessos.</p>
+      ${msg}
+      <label for="vf-nome">Nome completo</label><input type="text" id="vf-nome" placeholder="Nome completo">
+      <div class="row">
+        <div><label for="vf-matricula">Matrícula</label><input type="text" id="vf-matricula" placeholder="Ex: 20456"></div>
+        <div><label for="vf-cpf">CPF</label><input type="text" id="vf-cpf" placeholder="Somente números"></div>
+      </div>
+      <label for="vf-email">E-mail (para recuperação de senha)</label><input type="text" id="vf-email" placeholder="email@empresa.com">
+      <div class="row">
+        <div><label for="vf-senha">Senha inicial</label><input type="password" id="vf-senha" placeholder="Senha inicial"></div>
+        <div><label for="vf-role">Perfil</label>
+          <select id="vf-role"><option value="vistoriador">Vistoriador</option><option value="admin">Administrador</option></select>
+        </div>
+      </div>
+      <button class="primary blue" id="add-user-btn">Cadastrar</button>
+    </div>
+    <div class="card"><h2>Colaboradores cadastrados (${state.users.length})</h2>${items}</div>`;
+}
+
+function renderHistoryTab(){
+  if(state.history.length === 0) return `<div class="card"><div class="empty">Nenhuma vistoria registrada ainda.</div></div>`;
+  const items = state.history.map(h => `
+    <div class="hist-item">
+      <div class="hist-top"><span class="via">Viatura ${escapeHtml(h.viatura)}</span><span class="date">${fmtDateBR(h.date)}</span></div>
+      <div class="hist-meta">Matrículas: ${escapeHtml(h.matricula1)}, ${escapeHtml(h.matricula2)}${h.matricula3?', '+escapeHtml(h.matricula3):''}${h.registradoPor?` · por ${escapeHtml(h.registradoPor)}`:''} · registrado em ${fmtDateTimeBR(h.registradoEm)}</div>
+      <span class="badge ${h.ok?'ok':'bad'}">${h.ok?'Kit completo':'Divergência encontrada'}</span>
+      ${h.photo?`<img class="hist-photo" src="${h.photo}" alt="Foto das ferramentas"><a class="photo-download" style="margin-bottom:8px;" href="${h.photo}" download="foto-vistoria-${escapeHtml(h.viatura)}-${h.date}.jpg">Baixar foto</a>`:''}
+      <div style="margin-top:8px;">
+        ${h.tools.map(t=>{
+          const st = t.status || 'ok';
+          const color = st==='ok' ? '#5b6b7c' : (st==='falta' ? '#d64545' : '#c98a12');
+          return `<div style="display:flex; justify-content:space-between; font-size:12.5px; padding:3px 0; ${st!=='ok'?`color:${color}; font-weight:700;`:''}"><span>${escapeHtml(t.name)}</span><span>${STATUS_LABEL[st]}</span></div>`;
+        }).join('')}
+      </div>
+      ${h.editadoEm ? `<div style="font-size:11px; color:#8fa0b0; margin-top:6px;">Editado por ${escapeHtml(h.editadoPor||'')} em ${fmtDateTimeBR(h.editadoEm)}</div>` : ''}
+      ${isAdmin() ? `
+        <div class="row" style="margin-top:8px;">
+          <button class="ghost" style="padding:8px; font-size:12px;" data-edit-hist="${h.id}">Editar registro</button>
+          <button class="danger-link" style="text-align:center; border:1.5px solid #f3c6c6; border-radius:10px; padding:8px; margin:0;" data-remove-hist="${h.id}">Excluir registro</button>
+        </div>` : ''}
+    </div>`).join('');
+  return `
+    <div class="card"><h2>Exportar relatório</h2><p class="hint">Gera um arquivo CSV que abre direto no Excel.</p>
+      <div class="row"><button class="ghost" id="export-all-btn">Exportar tudo</button><button class="ghost" id="export-div-btn">Só divergências</button></div>
+    </div>
+    <div class="card"><h2>Histórico de vistorias</h2>${items}</div>`;
+}
+
+function renderSession(){
+  const s = state.session;
+  if(s.stage === 'contagem'){
+    const rows = state.tools.map(t => {
+      const st = s.status[t.id] || 'ok';
+      return `
+      <div class="check-row">
+        <div class="tname"><div class="n">${escapeHtml(t.name)}</div><div class="e">quantidade esperada: ${t.qty}</div></div>
+        <div class="status-group">
+          <button class="status-btn ${st==='ok'?'sel-ok':''}" data-status="ok" data-tool="${t.id}">OK</button>
+          <button class="status-btn ${st==='falta'?'sel-falta':''}" data-status="falta" data-tool="${t.id}">Falta</button>
+          <button class="status-btn ${st==='substituir'?'sel-substituir':''}" data-status="substituir" data-tool="${t.id}">Substituir</button>
+        </div>
+      </div>`;
+    }).join('');
+    return `
+      <div class="card">
+        <div class="stage-label"><span class="name">${s.editingId?'Editando registro':'Viatura'} ${escapeHtml(s.viatura)} — ${fmtDateBR(s.date)}</span></div>
+        <p class="hint">Matrículas: ${escapeHtml(s.matricula1)}, ${escapeHtml(s.matricula2)}${s.matricula3?', '+escapeHtml(s.matricula3):''}</p>
+        <h2>Contagem das ferramentas</h2>
+        <p class="hint">Marque a situação de cada ferramenta conferida em campo.</p>
+        ${rows}
+      </div>
+      <div class="card">
+        <h2>Foto das ferramentas</h2><p class="hint">Obrigatório — anexe uma foto completa do kit conferido.</p>
+        <div class="photo-input-wrap">
+          ${!s.photo?`
+          <div class="row">
+            <label class="photo-btn" for="photo-input-camera">📷 Tirar foto</label>
+            <label class="photo-btn" for="photo-input-file">📁 Anexar arquivo</label>
+          </div>
+          <input type="file" accept="image/*" capture="environment" id="photo-input-camera" style="display:none;">
+          <input type="file" accept="image/*" id="photo-input-file" style="display:none;">`:''}
+          ${s.photo?`
+          <img class="photo-preview" src="${s.photo}">
+          <div class="row" style="margin-top:10px;">
+            <a class="photo-download" href="${s.photo}" download="foto-vistoria-${escapeHtml(s.viatura)}-${s.date}.jpg">Baixar foto</a>
+            <button class="danger-link" id="remove-photo-btn">Remover foto</button>
+          </div>`:''}
+        </div>
+      </div>
+      <button class="primary blue" data-go-resultado="1">Finalizar</button>
+      <button class="ghost" style="margin-top:10px;" data-cancel="1">Cancelar vistoria</button>`;
+  }
+  if(s.stage === 'resultado'){
+    const discrepancies = state.tools.filter(t => s.status[t.id] !== 'ok');
+    const ok = discrepancies.length===0;
+    const rows = state.tools.map(t => {
+      const st = s.status[t.id] || 'ok';
+      const diff = st !== 'ok';
+      const color = st==='ok' ? '#2f8f4e' : (st==='falta' ? '#d64545' : '#c98a12');
+      return `<div class="check-row" style="${diff?'background:'+(st==='falta'?'#fdeaea':'#fdf3e3')+'; margin:0 -16px; padding:12px 16px;':''}">
+        <div class="tname" style="margin-bottom:0;"><div class="n">${escapeHtml(t.name)}</div></div>
+        <div style="font-size:13px; font-weight:800; color:${color};">${STATUS_LABEL[st]}</div>
+      </div>`;
+    }).join('');
+    return `
+      <div class="card">
+        <div class="summary-box ${ok?'ok':'bad'}">
+          <div class="title ${ok?'ok':'bad'}">${ok?'Kit completo — nenhuma ferramenta faltando':`${discrepancies.length} divergência(s) encontrada(s)`}</div>
+          <div class="desc">Viatura ${escapeHtml(s.viatura)} · ${fmtDateBR(s.date)} · Matrículas ${escapeHtml(s.matricula1)}, ${escapeHtml(s.matricula2)}${s.matricula3?', '+escapeHtml(s.matricula3):''}</div>
+        </div>
+        ${rows}
+      </div>
+      <button class="primary blue" data-finalize="1">${s.editingId?'Salvar alterações no registro':'Salvar registro'}</button>`;
+  }
+  return '';
+}
+
+function attachHandlers(){
+  const bootstrapBtn = document.getElementById('bootstrap-btn');
+  if(bootstrapBtn) bootstrapBtn.onclick = () => bootstrapAdmin(
+    document.getElementById('bs-nome').value, document.getElementById('bs-matricula').value,
+    document.getElementById('bs-cpf').value, document.getElementById('bs-email').value,
+    document.getElementById('bs-senha').value, document.getElementById('bs-confirmar').value
+  );
+  const loginBtn = document.getElementById('login-btn');
+  if(loginBtn) loginBtn.onclick = () => doLogin(document.getElementById('login-matricula').value, document.getElementById('login-senha').value);
+  const gotoRec = document.getElementById('goto-recuperar'); if(gotoRec) gotoRec.onclick = () => goScreen('recuperar');
+  const backLogin2 = document.getElementById('back-login-2'); if(backLogin2) backLogin2.onclick = () => goScreen('login');
+  const findRecBtn = document.getElementById('find-recover-btn');
+  if(findRecBtn) findRecBtn.onclick = () => findRecoverUser(document.getElementById('rec-matricula').value);
+
+  const logoutBtn = document.getElementById('logout-btn'); if(logoutBtn) logoutBtn.onclick = logout;
+  const hamburgerBtn = document.getElementById('hamburger-btn'); if(hamburgerBtn) hamburgerBtn.onclick = toggleSidebar;
+  const sidebarOverlay = document.getElementById('sidebar-overlay'); if(sidebarOverlay) sidebarOverlay.onclick = closeSidebar;
+  document.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => { state.tab = b.dataset.tab; state.userFormMsg = null; state.sidebarOpen = false; render(); });
+
+  const startBtn = document.getElementById('start-btn');
+  if(startBtn) startBtn.onclick = () => startSession(
+    document.getElementById('viatura-input').value, document.getElementById('date-input').value,
+    document.getElementById('m1-input').value, document.getElementById('m2-input').value, document.getElementById('m3-input').value
+  );
+  const addToolBtn = document.getElementById('add-tool-btn');
+  if(addToolBtn) addToolBtn.onclick = () => addTool(document.getElementById('tool-name').value, parseInt(document.getElementById('tool-qty').value,10));
+  document.querySelectorAll('[data-remove-tool]').forEach(b => b.onclick = () => removeTool(b.dataset.removeTool));
+  document.querySelectorAll('[data-remove-hist]').forEach(b => b.onclick = () => deleteHistoryItem(b.dataset.removeHist));
+  document.querySelectorAll('[data-edit-hist]').forEach(b => b.onclick = () => startEditSession(b.dataset.editHist));
+  document.querySelectorAll('[data-status]').forEach(b => b.onclick = () => setStatus(b.dataset.tool, b.dataset.status));
+
+  const addUserBtn = document.getElementById('add-user-btn');
+  if(addUserBtn) addUserBtn.onclick = () => addVistoriador(
+    document.getElementById('vf-nome').value, document.getElementById('vf-matricula').value,
+    document.getElementById('vf-cpf').value, document.getElementById('vf-email').value,
+    document.getElementById('vf-senha').value, document.getElementById('vf-role').value
+  );
+  document.querySelectorAll('[data-remove-user]').forEach(b => b.onclick = () => removeVistoriador(b.dataset.removeUser));
+
+  const photoInputCamera = document.getElementById('photo-input-camera'); if(photoInputCamera) photoInputCamera.onchange = (e) => handlePhotoInput(e.target.files[0]);
+  const photoInputFile = document.getElementById('photo-input-file'); if(photoInputFile) photoInputFile.onchange = (e) => handlePhotoInput(e.target.files[0]);
+  const removePhotoBtn = document.getElementById('remove-photo-btn'); if(removePhotoBtn) removePhotoBtn.onclick = removePhoto;
+  const goResultadoBtn = document.querySelector('[data-go-resultado]'); if(goResultadoBtn) goResultadoBtn.onclick = goToResultado;
+  const finalizeBtn = document.querySelector('[data-finalize]'); if(finalizeBtn) finalizeBtn.onclick = finalizeSession;
+  const cancelBtn = document.querySelector('[data-cancel]'); if(cancelBtn) cancelBtn.onclick = cancelSession;
+
+  const exportAllBtn = document.getElementById('export-all-btn'); if(exportAllBtn) exportAllBtn.onclick = () => exportCSV(false);
+  const exportDivBtn = document.getElementById('export-div-btn'); if(exportDivBtn) exportDivBtn.onclick = () => exportCSV(true);
+}
+
+loadAll();
+</script>
+</body>
+</html>
