@@ -298,11 +298,17 @@ const fireDb = firebase.firestore();
 const DOC_USERS = fireDb.collection('app-data').doc('usuarios');
 const DOC_TOOLS = fireDb.collection('app-data').doc('ferramentas');
 const DOC_HISTORY = fireDb.collection('app-data').doc('historico');
+// Documento público e sem dados sensíveis — só diz "já existe algum
+// administrador?". É o único documento que pode ser lido SEM estar
+// logado (ver regras de segurança), para o app saber se deve mostrar
+// a tela de login normal ou a de "Primeiro acesso".
+const DOC_META = fireDb.collection('app-data').doc('meta');
 
 const STATUS_LABEL = { ok:'OK', falta:'Falta', substituir:'Precisa substituir' };
 
 let state = {
   loading: true,
+  hasAdmin: false,
   users: [],
   currentUser: null,
   screen: 'login',        // login | recuperar | vistoriadores
@@ -349,6 +355,14 @@ const DB = {
   },
   async saveHistory(list){
     try{ await DOC_HISTORY.set({ list }); }catch(e){ console.error(e); }
+  },
+  // Único dado que pode ser lido sem estar logado: só um booleano.
+  async getHasAdmin(){
+    try{ const snap = await DOC_META.get(); return snap.exists && snap.data().hasAdmin === true; }
+    catch(e){ console.error(e); return false; }
+  },
+  async setHasAdmin(){
+    try{ await DOC_META.set({ hasAdmin: true }); }catch(e){ console.error(e); }
   }
 };
 
@@ -365,14 +379,21 @@ function loginEmailFromMatricula(matricula){
 // no Firestore, e não deve "atropelar" o fluxo manual com um erro.
 let manualAuthInProgress = false;
 
-async function loadAll(){
+async function refreshProtectedData(){
   state.tools = await DB.getTools();
   state.history = await DB.getHistory();
   state.users = await DB.getUsers();
+}
+
+async function loadAll(){
+  // Esta leitura é a ÚNICA permitida sem estar logado (ver regras de
+  // segurança). Só diz se já existe algum admin — nenhum dado sensível.
+  state.hasAdmin = await DB.getHasAdmin();
 
   auth.onAuthStateChanged(async (fbUser) => {
     if(manualAuthInProgress) return; // doLogin/bootstrapAdmin cuidam do estado sozinhos
     if(fbUser){
+      await refreshProtectedData();
       const profile = state.users.find(u => u.uid === fbUser.uid);
       if(profile){
         state.currentUser = profile;
@@ -395,8 +416,15 @@ async function saveUsers(){ await DB.saveUsers(state.users); }
 async function saveTools(){ await DB.saveTools(state.tools); }
 async function saveHistory(){ await DB.saveHistory(state.history); }
 
-// ---------- PRIMEIRO ACESSO (cria o administrador inicial) ----------
+// ---------- CRIAR ADMINISTRADOR (só existe enquanto NENHUM admin ----------
+// existir no sistema — depois disso, esta função nunca mais roda porque a
+// própria tela de login deixa de oferecer essa opção. Novos vistoriadores
+// depois disso só podem ser cadastrados por um admin já logado.)
 async function bootstrapAdmin(nome, matricula, cpf, email, senha, confirmar){
+  if(state.hasAdmin){
+    state.authMsg = {type:'error', text:'Já existe um administrador cadastrado. Peça acesso a ele.'};
+    render(); return;
+  }
   nome=nome.trim(); matricula=matricula.trim(); cpf=onlyDigits(cpf); email=email.trim();
   if(!nome || !matricula || cpf.length!==11 || !email || !senha){
     state.authMsg={type:'error', text:'Preencha todos os campos. CPF deve ter 11 dígitos.'}; render(); return;
@@ -406,12 +434,17 @@ async function bootstrapAdmin(nome, matricula, cpf, email, senha, confirmar){
   try{
     const cred = await auth.createUserWithEmailAndPassword(loginEmailFromMatricula(matricula), senha);
     const profile = { uid: cred.user.uid, nome, matricula, cpf, email, role:'admin' };
-    state.users.push(profile);
+    state.users = [profile];
     await saveUsers();
+    await DB.setHasAdmin();
+    state.hasAdmin = true;
+    state.tools = await DB.getTools();
+    state.history = await DB.getHistory();
     // Assumimos o login diretamente aqui, sem depender do listener global
     // (evita a corrida em que ele dispara antes do perfil ser salvo).
     state.currentUser = profile;
     state.authMsg = null;
+    state.screen = 'login';
     state.tab = 'dashboard';
   }catch(e){
     state.authMsg = {type:'error', text:'Não foi possível criar o acesso: ' + (e.message||e)};
@@ -427,6 +460,7 @@ async function doLogin(matricula, senha){
   manualAuthInProgress = true;
   try{
     const cred = await auth.signInWithEmailAndPassword(loginEmailFromMatricula(matricula), senha);
+    await refreshProtectedData();
     const profile = state.users.find(u => u.uid === cred.user.uid);
     if(!profile){
       state.authMsg = {type:'error', text:'Login válido, mas sem perfil cadastrado. Fale com o administrador.'};
@@ -454,20 +488,15 @@ function goScreen(screen){
   state.authMsg = null; state.screen = screen; state.recoverStep = 'find'; state.recoverUser = null;
   render();
 }
-// Recuperação de senha real: envia e-mail do próprio Firebase para o
-// endereço de e-mail cadastrado (não o e-mail técnico de login).
+// Recuperação de senha real: envia e-mail do próprio Firebase. Não
+// confirmamos se a matrícula existe ou não (evita que alguém descubra
+// quais matrículas têm cadastro só tentando recuperar senha).
 async function findRecoverUser(matricula){
   matricula = matricula.trim();
-  const user = state.users.find(u => u.matricula === matricula);
-  if(!user || !user.email){ state.authMsg = {type:'error', text:'Matrícula não encontrada ou sem e-mail cadastrado.'}; render(); return; }
-  try{
-    await auth.sendPasswordResetEmail(loginEmailFromMatricula(matricula));
-    state.authMsg = {type:'ok', text:'Enviamos um link de redefinição de senha para o e-mail cadastrado: ' + user.email};
-    render();
-  }catch(e){
-    state.authMsg = {type:'error', text:'Não foi possível enviar o e-mail de recuperação agora.'};
-    render();
-  }
+  if(!matricula){ state.authMsg = {type:'error', text:'Informe sua matrícula.'}; render(); return; }
+  try{ await auth.sendPasswordResetEmail(loginEmailFromMatricula(matricula)); }catch(e){ /* silencioso, ver comentário acima */ }
+  state.authMsg = {type:'ok', text:'Se essa matrícula tiver cadastro, enviamos um link de redefinição de senha para o e-mail associado a ela.'};
+  render();
 }
 
 // ---------- ADMIN: gerenciar vistoriadores ----------
@@ -634,17 +663,19 @@ function render(){
 }
 
 function renderAuth(){
-  if(state.users.length === 0) return renderBootstrapScreen();
   if(state.screen === 'recuperar') return renderRecuperarScreen();
+  if(state.screen === 'criar-admin') return renderCriarAdminScreen();
   return renderLoginScreen();
 }
 
-function renderBootstrapScreen(){
+function renderCriarAdminScreen(){
+  // Só é possível chegar nesta tela enquanto NENHUM admin existir
+  // (o link que leva aqui só aparece nesse caso — ver renderLoginScreen).
   const msg = state.authMsg ? `<div class="auth-msg ${state.authMsg.type}">${escapeHtml(state.authMsg.text)}</div>` : '';
   return `
   <div class="auth-wrap"><div class="auth-card"><div class="auth-topbar"></div><div class="auth-body">
     <div class="auth-icon">${personLockIcon()}</div>
-    <h1 class="auth-title">Primeiro acesso</h1>
+    <h1 class="auth-title">Criar administrador</h1>
     <div class="auth-desc">Ainda não há administrador cadastrado. Crie o primeiro acesso do sistema.</div>
     ${msg}
     <label class="auth-label">Nome completo:</label><input type="text" class="auth-input" id="bs-nome" placeholder="Nome completo">
@@ -653,7 +684,7 @@ function renderBootstrapScreen(){
     <label class="auth-label">E-mail (para recuperação de senha):</label><input type="text" class="auth-input" id="bs-email" placeholder="seuemail@empresa.com">
     <label class="auth-label">Senha:</label><input type="password" class="auth-input" id="bs-senha" placeholder="Crie uma senha">
     <label class="auth-label">Confirmar senha:</label><input type="password" class="auth-input" id="bs-confirmar" placeholder="Repita a senha">
-    <button class="auth-btn" id="bootstrap-btn">Criar administrador</button>
+    <div class="auth-row"><button class="auth-btn secondary" id="back-login-3">Cancelar</button><button class="auth-btn" id="bootstrap-btn">Criar administrador</button></div>
   </div></div></div>`;
 }
 
@@ -682,7 +713,10 @@ function renderLoginScreen(){
         <input type="password" class="auth-input" id="login-senha" placeholder="Digite sua senha">
         <button class="auth-btn" id="login-btn">Entrar →</button>
         <button class="auth-link" id="goto-recuperar">Esqueci minha senha</button>
-        <div class="auth-hint">Novo colaborador? Peça ao administrador para criar seu acesso.</div>
+        ${state.hasAdmin
+          ? `<div class="auth-hint">Novo colaborador? Peça ao administrador para criar seu acesso.</div>`
+          : `<div class="auth-hint">Nenhum administrador cadastrado ainda.</div><button class="auth-link" id="goto-criar-admin">Criar administrador</button>`
+        }
       </div>
     </div>
   </div>`;
@@ -950,6 +984,8 @@ function attachHandlers(){
   const loginBtn = document.getElementById('login-btn');
   if(loginBtn) loginBtn.onclick = () => doLogin(document.getElementById('login-matricula').value, document.getElementById('login-senha').value);
   const gotoRec = document.getElementById('goto-recuperar'); if(gotoRec) gotoRec.onclick = () => goScreen('recuperar');
+  const gotoCriarAdmin = document.getElementById('goto-criar-admin'); if(gotoCriarAdmin) gotoCriarAdmin.onclick = () => goScreen('criar-admin');
+  const backLogin3 = document.getElementById('back-login-3'); if(backLogin3) backLogin3.onclick = () => goScreen('login');
   const backLogin2 = document.getElementById('back-login-2'); if(backLogin2) backLogin2.onclick = () => goScreen('login');
   const findRecBtn = document.getElementById('find-recover-btn');
   if(findRecBtn) findRecBtn.onclick = () => findRecoverUser(document.getElementById('rec-matricula').value);
